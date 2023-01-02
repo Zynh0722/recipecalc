@@ -3,7 +3,6 @@ import Link from "next/link";
 import { trpc } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
-import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
 import { Recipe } from "@prisma/client";
 import RecipeAutoComplete from "../components/RecipeAutoComplete";
@@ -15,7 +14,7 @@ type RecipeWithUses = Recipe & {
     }[];
 };
 
-const Recipe: FunctionComponent<{ recipe: RecipeWithUses }> = ({ recipe }) => {
+const Recipe: React.FC<{ recipe: RecipeWithUses }> = ({ recipe }) => {
     const [opened, setOpened] = useState(false);
 
     return <li className="flex max-w-xs gap-4 justify-between rounded-xl bg-white/10 p-2 text-white hover:bg-white/20" onClick={() => setOpened(!opened)}>
