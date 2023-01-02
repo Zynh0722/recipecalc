@@ -62,11 +62,6 @@ const CreatePage: NextPage = () => {
         return out;
     }
 
-    function makeRandomRecipe() {
-        const uses = (recipes) ? randomNFromArray(Math.floor(Math.random() * recipes.length), recipes.map(r => r.id)) : [];
-        addRecipe.mutate({ name: (Math.random() + 1).toString(36).substring(7), uses})
-    }
-
     function makeRecipe(name: string) {
         const uses = (recipes) ? randomNFromArray(Math.floor(Math.random() * recipes.length), recipes.map(r => r.id)) : [];
         addRecipe.mutate({ name, uses })
