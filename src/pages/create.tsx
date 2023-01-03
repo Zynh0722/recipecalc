@@ -1,27 +1,31 @@
 import type { NextPage } from "next";
-import Link from "next/link";
 import { trpc } from "../utils/trpc";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { Recipe } from "@prisma/client";
-import RecipeAutoComplete from "../components/RecipeAutoComplete";
+import { getSession, signOut, useSession } from "next-auth/react";
+import { useState } from "react";
+import RecipeMaker from "../components/RecipeMaker";
+import Image from "next/image";
+import type { GetServerSidePropsContext } from "next";
 
-type RecipeWithUses = Recipe & {
+type RecipeWithUses = {
+    id: string;
+    name: string;
     uses: {
-        id: string;
-        name: string;
+        quantity: number;
+        used: {
+            id: string;
+            name: string;
+        };
     }[];
 };
 
 const Recipe: React.FC<{ recipe: RecipeWithUses }> = ({ recipe }) => {
     const [opened, setOpened] = useState(false);
 
-    return <li className="flex max-w-xs gap-4 justify-between rounded-xl bg-white/10 p-2 text-white hover:bg-white/20" onClick={() => setOpened(!opened)}>
+    return <li className="flex snap-start snap-always max-w-xs gap-4 justify-between rounded-xl bg-white/10 p-2 text-neutral-100 hover:bg-white/20" onClick={() => setOpened(!opened)}>
         <div>
             {recipe.name}
             {(opened) ? <ul>
-                {recipe.uses.map(usedRecipe => <li className="text-sm pl-2" key={usedRecipe.id}> {`- ${usedRecipe.name}`}</li>)}
+                {recipe.uses.map(({quantity, used}) => <li className="text-sm pl-2" key={used.id}> {`${quantity} - ${used.name}`}</li>)}
             </ul> : null}
         </div>
         <div className="select-none">{(recipe.uses.length >= 1) ? (!opened) ? "<" : "v" : null}</div>
@@ -29,68 +33,56 @@ const Recipe: React.FC<{ recipe: RecipeWithUses }> = ({ recipe }) => {
 };
 
 const CreatePage: NextPage = () => {
-    const router = useRouter();
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const { data: recipes, ...query } = trpc.recipe.getRecipes.useQuery();
-    const addRecipe = trpc.recipe.addRecipe.useMutation({onSuccess: () => query.refetch()});
-
-    // non-inclusive max
-    function randIntFromMax(max: number) {
-        return Math.floor(Math.random() * max);
-    }
-
-    function randomNFromArray(n: number, array: string[]) {
-        if (n > array.length) return array;
-        if (n <= 0) return []; 
-
-        const indecies: number[] = [];
-        while (indecies.length < n) {
-            const attempt = Math.min(randIntFromMax(n), randIntFromMax(10));
-            if (indecies.indexOf(attempt) === -1) {
-                indecies.push(attempt);
-            }
-        }
-
-        const out: string[] = [];
-        for (const i of indecies) {
-            const val = array[i];
-            if (val !== undefined) {
-                out.push(val);
-            }
-        }
-
-        return out;
-    }
+    const addRecipe = trpc.recipe.addRecipe.useMutation({ onSuccess: () => query.refetch() });
+    // const addUse = trpc.recipe.addUse.useMutation({ onSuccess: () => query.refetch() });
 
     function makeRecipe(name: string) {
-        const uses = (recipes) ? randomNFromArray(Math.floor(Math.random() * recipes.length), recipes.map(r => r.id)) : [];
-        addRecipe.mutate({ name, uses })
+        addRecipe.mutate({ name })
     }
 
-    useEffect(() => {
-        if (session?.user === undefined && status !== "loading") {
-            router.push('/');
-        }
-    }, [session, router, status]);
-
-    if (!session) { return <div>Access Denied!</div> }
-
-    return <div className="min-h-screen bg-gradient-to-b from-[#2e026d] to-[#15162c]">
+    return <div className="min-h-screen max-h-screen bg-neutral-900 overflow-clip">
+        {/* Header */}
         <div className="flex justify-between">
-            <Link href="/" className="rounded-full m-2 bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20">
-                Go Home!
-            </Link>
-            <div className="font-extrabold tracking-tight text-white sm:text-[2rem] m-2">Hello <span className="text-[hsl(280,100%,70%)]">{session.user?.name}</span></div>
+            <div className="font-extrabold tracking-tight text-white text-2xl p-4">
+                {session && <>
+                    <Image className="inline mr-2 mb-1 rounded-full" src={session?.user?.image ?? ""} alt="User profile image" width={35} height={35} />
+                    <span className="text-teal-700">{session?.user?.name ?? "Anon"}</span>
+                </>}
+            </div>
+            <button onClick={() => signOut()} className="rounded-full m-4 bg-white/10 px-5 py-2 font-semibold text-neutral-100 no-underline transition hover:bg-white/20">
+                Sign Out
+            </button>
         </div>
-        <div className="flex justify-evenly">
-            <ul className="flex flex-col gap-1">
+
+        {/* Body */}
+        <div className="grid grid-cols-2 justify-evenly max-h-screen">
+            {/* Recipes */}
+            <ul className="flex flex-col snap-y snap-mandatory gap-1 px-4 pb-8 max-h-screen overflow-scroll">
                 {recipes?.map(recipe => <Recipe key={recipe.id} recipe={recipe} />)}
             </ul>
-            <div className="flex-col justify-center text-center">
-                <RecipeAutoComplete recipes={recipes} makeRecipe={makeRecipe} />
+
+            {/* Form */}
+            <div className="flex flex-col max-h-full justify-center text-center">
+                <RecipeMaker recipes={recipes} makeRecipe={makeRecipe} />
             </div>
         </div>
     </div>
+}
+
+export const getServerSideProps = async ({ req }: GetServerSidePropsContext) => {
+    const session = await getSession({ req });
+
+    if (!session) {
+        return {
+            redirect: { destination: "/" }
+        };
+    }
+
+    return {
+        props: {}
+    }
 }
 
 export default CreatePage;
