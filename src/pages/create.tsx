@@ -8,46 +8,6 @@ import type { GetServerSidePropsContext } from "next";
 import RecipeDrawer from "components/recipeDrawer/RecipeDrawer";
 import { useKeybind } from "hooks/useKeybind";
 
-type RecipeWithUses = {
-    id: string;
-    name: string;
-    uses: {
-        quantity: number;
-        used: {
-            id: string;
-            name: string;
-        };
-    }[];
-};
-
-const Recipe: React.FC<{ recipe: RecipeWithUses }> = ({ recipe }) => {
-    const [opened, setOpened] = useState(false);
-
-    return (
-        <li
-            className="flex w-4/5 snap-start snap-always justify-between gap-4 rounded-xl bg-white/10 p-2 text-neutral-100 hover:bg-white/20"
-            onClick={() => setOpened(!opened)}
-        >
-            <div>
-                {recipe.name}
-                {opened ? (
-                    <ul>
-                        {recipe.uses.map(({ quantity, used }) => (
-                            <li className="pl-2 text-sm" key={used.id}>
-                                {" "}
-                                {`${quantity} - ${used.name}`}
-                            </li>
-                        ))}
-                    </ul>
-                ) : null}
-            </div>
-            <div className="select-none">
-                {recipe.uses.length >= 1 ? (!opened ? "<" : "v") : null}
-            </div>
-        </li>
-    );
-};
-
 const CreatePage: NextPage = () => {
     const context = trpc.useContext();
     const { data: session } = useSession();
@@ -56,7 +16,6 @@ const CreatePage: NextPage = () => {
     const addRecipe = trpc.recipe.addRecipe.useMutation({
         onSuccess: () => context.recipe.invalidate(),
     });
-    // const addUse = trpc.recipe.addUse.useMutation({ onSuccess: () => query.refetch() });
 
     useKeybind("Escape", () => {
         setDrawer(false);
